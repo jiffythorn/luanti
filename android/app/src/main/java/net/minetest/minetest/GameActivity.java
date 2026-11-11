@@ -29,6 +29,7 @@ import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -69,6 +70,14 @@ public class GameActivity extends SDLActivity {
 		return new String[] {
 			"luanti"
 		};
+	}
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		// Bind before SDL starts the native code, so the first UDP socket is
+		// already on the home Wi-Fi and can never drift onto mobile data.
+		LocalNetwork.start(this);
+		super.onCreate(savedInstanceState);
 	}
 
 	// Prevent SDL from changing orientation settings since we already set the

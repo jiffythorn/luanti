@@ -48,6 +48,9 @@ public:
 	bool isAny() const;
 	// Is this an address referring to the local host?
 	bool isLocalhost() const;
+	// Is this an address on the local network (private IPv4, IPv6
+	// ULA/link-local, or loopback)? Used by LOCAL_NETWORK_ONLY phone builds.
+	bool isLocalNetwork() const;
 
 	// `name`: hostname or numeric IP
 	// `fallback`: fallback IP to try gets written here

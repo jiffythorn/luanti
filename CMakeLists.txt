@@ -89,6 +89,14 @@ endif()
 set(ENABLE_UPDATE_CHECKER (NOT ${DEVELOPMENT_BUILD}) CACHE BOOL
 	"Whether to enable update checks by default")
 
+# Phone-client builds set this so the engine only accepts servers whose
+# address is on the local network (private IPv4, IPv6 ULA/link-local, or
+# loopback). It is off for normal desktop builds.
+option(LOCAL_NETWORK_ONLY "Only allow servers on the local network" OFF)
+if(LOCAL_NETWORK_ONLY)
+	add_compile_definitions(LOCAL_NETWORK_ONLY)
+endif()
+
 # Included stuff
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 

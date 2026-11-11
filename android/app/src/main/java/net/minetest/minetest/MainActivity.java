@@ -90,6 +90,10 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		// Keep every socket on the home Wi-Fi, including the native game
+		// sockets. This works even when that Wi-Fi has no internet access,
+		// which is how the town is meant to be played.
+		LocalNetwork.start(this);
 		setContentView(R.layout.activity_main);
 
 		IntentFilter filter = new IntentFilter(ACTION_UPDATE);

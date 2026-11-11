@@ -562,6 +562,13 @@ void set_default_settings()
 
 	// Altered settings for Android
 #ifdef __ANDROID__
+	// This build is the phone client for a town on the home Wi-Fi. It has no
+	// public server list, no online content browser and no update check; the
+	// Android launcher additionally refuses every non-LAN destination address.
+	settings->setDefault("serverlist_url", "");
+	settings->setDefault("contentdb_url", "");
+	settings->setDefault("contentdb_enable_updates_indicator", "false");
+
 	settings->setDefault("screen_w", "0");
 	settings->setDefault("screen_h", "0");
 	settings->setDefault("performance_tradeoffs", "true");

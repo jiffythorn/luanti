@@ -124,12 +124,35 @@ void Address::Resolve(const char *name, Address *fallback)
 	assert(resolved);
 
 	// Copy data
+#ifdef LOCAL_NETWORK_ONLY
+	// Phone-client build: only the home network is allowed. Pick the first
+	// local address the resolver returned, and refuse a public one outright,
+	// so a typed internet address or a hostname that resolves outside the
+	// LAN cannot take the app off the local network.
+	bool found_local = false;
+	for (struct addrinfo *ai = resolved; ai; ai = ai->ai_next) {
+		Address candidate;
+		copy_from_ai(ai, &candidate);
+		if (candidate.isLocalNetwork()) {
+			*this = candidate;
+			found_local = true;
+			break;
+		}
+	}
+	if (!found_local) {
+		freeaddrinfo(resolved);
+		throw ResolveError("This app only joins servers on the local network");
+	}
+	if (fallback)
+		*fallback = Address();
+#else
 	copy_from_ai(resolved, this);
 	if (fallback) {
 		*fallback = Address();
 		if (resolved->ai_next)
 			copy_from_ai(resolved->ai_next, fallback);
 	}
+#endif
 
 	freeaddrinfo(resolved);
 }
@@ -198,6 +221,44 @@ void Address::print(std::ostream& s) const
 		s << serializeString() << ":" << m_port;
 	else
 		s << "(undefined)";
+}
+
+bool Address::isLocalNetwork() const
+{
+	if (m_addr_family == AF_INET) {
+		u32 addr = ntohl(m_address.ipv4.s_addr);
+		// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8,
+		// 169.254.0.0/16 and the unspecified address.
+		return (addr >> 24) == 10 ||
+			(addr >> 20) == 0xAC1 ||
+			(addr >> 16) == 0xC0A8 ||
+			(addr >> 24) == 127 ||
+			(addr >> 16) == 0xA9FE ||
+			addr == 0;
+	}
+
+	if (m_addr_family == AF_INET6) {
+		const u8 *a = m_address.ipv6.s6_addr;
+		static const u8 loopback[16] = {
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+		static const u8 mapped[12] = {
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF};
+
+		if (memcmp(a, loopback, 16) == 0)
+			return true;
+		// IPv6 link-local (fe80::/10) and unique-local (fc00::/7).
+		if (a[0] == 0xFE && (a[1] & 0xC0) == 0x80)
+			return true;
+		if ((a[0] & 0xFE) == 0xFC)
+			return true;
+		// IPv4-mapped address: check the embedded IPv4 address.
+		if (memcmp(a, mapped, 12) == 0) {
+			Address v4(a[12], a[13], a[14], a[15], 0);
+			return v4.isLocalNetwork();
+		}
+	}
+
+	return false;
 }
 
 bool Address::isLocalhost() const

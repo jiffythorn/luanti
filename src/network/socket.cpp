@@ -178,6 +178,15 @@ Address UDPSocket::GetLocalAddress()
 
 void UDPSocket::Send(const Address &destination, const void *data, int size)
 {
+#ifdef LOCAL_NETWORK_ONLY
+	// Phone-client build: the second guard (the first is the Wi-Fi binding in
+	// LocalNetwork.java). Never let a game packet leave for the internet.
+	if (!destination.isLocalNetwork()) {
+		throw SendFailedException(
+			"This app only joins servers on the local network");
+	}
+#endif
+
 	bool dumping_packet = false; // for INTERNET_SIMULATOR
 
 	if (INTERNET_SIMULATOR)

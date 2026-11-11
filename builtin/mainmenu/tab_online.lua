@@ -95,6 +95,29 @@ local function get_formspec(tabview, name, tabdata)
 		tabdata.search_for = ""
 	end
 
+	-- Phone build: there is no public server list. Keep the one thing the
+	-- child actually needs -- the address box -- and explain where to find
+	-- the address. The app only accepts local-network addresses anyway.
+	if (core.settings:get("serverlist_url") == "") then
+		return "size[" .. MAIN_TAB_W .. "," .. MAIN_TAB_H .. "]" ..
+			"label[0.6,0.35;Play on your home Wi-Fi]" ..
+			"label[0.6,0.85;This app never uses the internet. Ask a grown-up for the town address.]" ..
+			"label[0.6,1.7;Town address]" ..
+			"field[0.6,2.0;9.0,0.8;te_address;;" ..
+				core.formspec_escape(core.settings:get("address") or "") .. "]" ..
+			"label[10.0,1.7;Port]" ..
+			"field[10.0,2.0;2.0,0.8;te_port;;" ..
+				core.formspec_escape(core.settings:get("remote_port") or "30000") .. "]" ..
+			"label[0.6,3.2;Your name]" ..
+			"field[0.6,3.5;4.5,0.8;te_name;;" ..
+				core.formspec_escape(core.settings:get("name") or "") .. "]" ..
+			"label[5.4,3.2;Password (if the town uses one)]" ..
+			"pwdfield[5.4,3.5;4.5,0.8;te_pwd;]" ..
+			"button[0.6,4.8;3.2,0.9;btn_mp_login;Login]" ..
+			"label[0.6,6.0;Keep this phone on the same Wi-Fi as the town PC.]" ..
+			"label[0.6,6.5;If it cannot connect, check that Wi-Fi and try again.]"
+	end
+
 	local retval =
 		-- Search
 		"field[0.25,0.25;7,0.75;te_search;;" .. core.formspec_escape(tabdata.search_for) .. "]" ..
