@@ -80,6 +80,17 @@ void UDPSocket::Init(bool ipv6)
 		throw SocketException(msg);
 	}
 
+	// The LAN discovery probe sends one handshake to the broadcast address.
+	// This only permits broadcast sends; the LOCAL_NETWORK_ONLY check still
+	// rejects every other non-local destination.
+	int broadcast = 1;
+	if (setsockopt(m_handle, SOL_SOCKET, SO_BROADCAST,
+			reinterpret_cast<const char *>(&broadcast),
+			sizeof(broadcast)) != 0) {
+		warningstream << "Failed to enable UDP broadcast: "
+			<< SOCKET_ERR_STR(LAST_SOCKET_ERR()) << std::endl;
+	}
+
 	setTimeoutMs(0);
 }
 
@@ -176,12 +187,14 @@ Address UDPSocket::GetLocalAddress()
 	}
 }
 
-void UDPSocket::Send(const Address &destination, const void *data, int size)
+void UDPSocket::Send(const Address &destination, const void *data, int size,
+		bool allow_broadcast)
 {
 #ifdef LOCAL_NETWORK_ONLY
 	// Phone-client build: the second guard (the first is the Wi-Fi binding in
 	// LocalNetwork.java). Never let a game packet leave for the internet.
-	if (!destination.isLocalNetwork()) {
+	if (!destination.isLocalNetwork() &&
+			!(allow_broadcast && destination.isBroadcast())) {
 		throw SendFailedException(
 			"This app only joins servers on the local network");
 	}

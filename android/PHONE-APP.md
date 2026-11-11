@@ -20,6 +20,10 @@ Kid Town server:
   the update checker are disabled at the default-settings level, and the
   Content tab is hidden. The Join Game tab keeps the address/port fields and
   the Login button, with a short "home Wi-Fi only" explanation.
+- **Find town.** The Join Game tab's **Find town** button sends one ordinary
+  Luanti handshake to the LAN broadcast address on the game port. The town PC
+  answers with its own address, which the app fills in; the child never has to
+  type an IP address.
 
 ## Install on a phone
 
@@ -34,8 +38,11 @@ Kid Town server:
 4. Copy the APK to the phone with a USB cable (or a local file share) and
    open it in the phone's Files app.
 5. Allow "install unknown apps" for the Files app when Android asks.
-6. Open the installed app, choose **Join Game**, and enter the town address
-   and port shown by the Kid Town Parent Area's **Join / app** page.
+6. Open the installed app, choose **Join Game**, and tap **Find town**. It
+   fills in the address and port of the town PC on the same Wi-Fi. If it cannot
+   find the town, check that the PC is running the town, that Play access is
+   **Home Network**, and that the phone is on the same Wi-Fi; the address can
+   still be entered by hand from the Parent Area's **Join / app** page.
 7. Log in with the account a grown-up made for the child.
 
 The app is intentionally **not** published to a store and does not need an
@@ -77,10 +84,11 @@ architecture rather than a single `app-debug.apk`.
 | `android/.../MainActivity.java`, `GameActivity.java` | Start the Wi-Fi binding before native code and before the game starts. |
 | `android/native/build.gradle` | Builds with `-DLOCAL_NETWORK_ONLY=1`. |
 | `CMakeLists.txt` | Adds the `LOCAL_NETWORK_ONLY` compile definition. |
-| `src/network/address.{h,cpp}` | Adds `Address::isLocalNetwork()` and makes name resolution choose/reject based on it. |
-| `src/network/socket.cpp` | Refuses any UDP send to a non-local address. |
+| `src/network/address.{h,cpp}` | Adds `Address::isLocalNetwork()` and `isBroadcast()`, and makes name resolution choose/reject based on it. |
+| `src/network/socket.cpp` | Refuses any UDP send to a non-local address, except the one LAN discovery broadcast. |
+| `src/script/lua_api/l_mainmenu.{h,cpp}` | Adds `core.find_lan_server()`: one LAN handshake reveals the town PC's address. |
 | `src/defaultsettings.cpp` | Android defaults disable `serverlist_url`, `contentdb_url` and update indicators. |
 | `builtin/mainmenu/init.lua` | Hides the Content tab when no ContentDB URL is configured. |
-| `builtin/mainmenu/tab_online.lua` | Shows a simple address/port/name/password join pane instead of the public server list. |
+| `builtin/mainmenu/tab_online.lua` | Shows a simple address/port/name/password join pane with **Find town** instead of the public server list. |
 | `.github/workflows/android.yml` | Builds and uploads the signed `KidTown-phone-debug-apks` artifact for local installation. |
 | `.github/workflows/phone-apk.yml` | Fast debug-only build for the arm64 phone APK, separate from the store release build. |

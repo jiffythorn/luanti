@@ -57,7 +57,10 @@ public:
 
 	Address GetLocalAddress();
 
-	void Send(const Address &destination, const void *data, int size);
+	// `allow_broadcast` is only for the one-shot LAN discovery probe. A
+	// normal game send still refuses every non-local destination.
+	void Send(const Address &destination, const void *data, int size,
+			bool allow_broadcast = false);
 	// Returns -1 if there is no data
 	int Receive(Address &sender, void *data, int size);
 	void setTimeoutMs(int timeout_ms);

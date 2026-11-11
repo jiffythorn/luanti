@@ -261,6 +261,12 @@ bool Address::isLocalNetwork() const
 	return false;
 }
 
+bool Address::isBroadcast() const
+{
+	return m_addr_family == AF_INET &&
+		m_address.ipv4.s_addr == INADDR_BROADCAST;
+}
+
 bool Address::isLocalhost() const
 {
 	if (m_addr_family == AF_INET6) {

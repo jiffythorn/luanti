@@ -28,9 +28,15 @@
 #include "gettext.h"
 #include "log.h"
 #include "util/string.h"
+#include "network/networkpacket.h"
+#include "network/socket.h"
+#include "util/serialize.h"
 
 #include <cassert>
+#include <cstring>
+#include <exception>
 #include <iostream>
+#include <vector>
 
 /******************************************************************************/
 std::string ModApiMainMenu::getTextData(lua_State *L, const std::string &name)
@@ -1022,6 +1028,56 @@ int ModApiMainMenu::l_get_max_supp_proto(lua_State *L)
 	return 1;
 }
 
+int ModApiMainMenu::l_find_lan_server(lua_State *L)
+{
+	try {
+		UDPSocket socket = UDPSocket::CreateEphemeral(false);
+		socket.setTimeoutMs(2000);
+
+		// Send a normal Luanti handshake to the LAN broadcast address. The
+		// town server answers even though we never log in, so the reply's
+		// source address identifies the PC without the child typing anything.
+		// The native LOCAL_NETWORK_ONLY guard allows only this broadcast.
+		const std::string_view player_name = "KidTownFind";
+		NetworkPacket pkt(TOSERVER_INIT,
+			(u32)(1 + 2 + 2 + 2 + 2 + player_name.size()));
+		pkt << SER_FMT_VER_HIGHEST_READ << (u16)0;
+		pkt << CLIENT_PROTOCOL_VERSION_MIN << LATEST_PROTOCOL_VERSION;
+		pkt << player_name;
+
+		Buffer<u8> payload = pkt.oldForgePacket();
+		std::vector<u8> wire(7 + 1 + payload.getSize());
+		// MTP header: protocol id, sender peer id 0 (new connection),
+		// channel 0, then one original packet.
+		writeU32(&wire[0], 0x4f457403);
+		writeU16(&wire[4], 0);
+		writeU8(&wire[6], 0);
+		writeU8(&wire[7], 1);
+		std::memcpy(&wire[8], *payload, payload.getSize());
+
+		socket.Send(Address(0xFFFFFFFFu, 30000),
+			wire.data(), static_cast<int>(wire.size()), true);
+
+		u8 buffer[2048];
+		Address sender;
+		int len = socket.Receive(sender, buffer, sizeof(buffer));
+		if (len > 0 && sender.isLocalNetwork() &&
+				sender.getPort() == 30000) {
+			lua_newtable(L);
+			lua_pushstring(L, sender.serializeString().c_str());
+			lua_setfield(L, -2, "address");
+			lua_pushinteger(L, sender.getPort());
+			lua_setfield(L, -2, "port");
+			return 1;
+		}
+	} catch (const std::exception &e) {
+		warningstream << "LAN discovery failed: " << e.what() << std::endl;
+	}
+
+	lua_pushnil(L);
+	return 1;
+}
+
 int ModApiMainMenu::l_get_formspec_version(lua_State  *L)
 {
 	lua_pushinteger(L, FORMSPEC_API_VERSION);
@@ -1174,6 +1230,7 @@ void ModApiMainMenu::Initialize(lua_State *L, int top)
 	API_FCT(get_active_irrlicht_device);
 	API_FCT(get_min_supp_proto);
 	API_FCT(get_max_supp_proto);
+	API_FCT(find_lan_server);
 	API_FCT(get_formspec_version);
 	API_FCT(is_debug_build);
 	API_FCT(open_url);

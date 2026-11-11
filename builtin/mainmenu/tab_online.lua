@@ -101,20 +101,24 @@ local function get_formspec(tabview, name, tabdata)
 	if (core.settings:get("serverlist_url") == "") then
 		return "size[" .. MAIN_TAB_W .. "," .. MAIN_TAB_H .. "]" ..
 			"label[0.6,0.35;Play on your home Wi-Fi]" ..
-			"label[0.6,0.85;This app never uses the internet. Ask a grown-up for the town address.]" ..
+			"label[0.6,0.85;Tap Find town. This app never uses the internet.]" ..
 			"label[0.6,1.7;Town address]" ..
-			"field[0.6,2.0;9.0,0.8;te_address;;" ..
+			"field[0.6,2.0;6.6,0.8;te_address;;" ..
 				core.formspec_escape(core.settings:get("address") or "") .. "]" ..
-			"label[10.0,1.7;Port]" ..
-			"field[10.0,2.0;2.0,0.8;te_port;;" ..
+			"label[7.6,1.7;Port]" ..
+			"field[7.6,2.0;1.6,0.8;te_port;;" ..
 				core.formspec_escape(core.settings:get("remote_port") or "30000") .. "]" ..
+			"button[9.6,2.0;3.4,0.8;btn_mp_find;Find town]" ..
+			"tooltip[btn_mp_find;Look for the town PC on this Wi-Fi]" ..
 			"label[0.6,3.2;Your name]" ..
 			"field[0.6,3.5;4.5,0.8;te_name;;" ..
 				core.formspec_escape(core.settings:get("name") or "") .. "]" ..
 			"label[5.4,3.2;Password (if the town uses one)]" ..
 			"pwdfield[5.4,3.5;4.5,0.8;te_pwd;]" ..
 			"button[0.6,4.8;3.2,0.9;btn_mp_login;Login]" ..
-			"label[0.6,6.0;Keep this phone on the same Wi-Fi as the town PC.]" ..
+			"label[0.6,6.0;" .. core.formspec_escape(
+				tabdata.find_note or
+					"Keep this phone on the same Wi-Fi as the town PC.") .. "]" ..
 			"label[0.6,6.5;If it cannot connect, check that Wi-Fi and try again.]"
 	end
 
@@ -612,6 +616,22 @@ local function main_button_handler(tabview, fields, name, tabdata)
 
 	if fields.btn_mp_refresh then
 		serverlistmgr.sync()
+		return true
+	end
+
+	if fields.btn_mp_find then
+		if not core.find_lan_server then
+			tabdata.find_note = "This build cannot search for a town."
+		else
+			local found = core.find_lan_server()
+			if found and found.address then
+				core.settings:set("address", found.address)
+				core.settings:set("remote_port", tostring(found.port))
+				tabdata.find_note = "Found " .. found.address .. " -- tap Login."
+			else
+				tabdata.find_note = "No town found. Check Wi-Fi and Play access."
+			end
+		end
 		return true
 	end
 

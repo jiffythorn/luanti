@@ -51,6 +51,8 @@ public:
 	// Is this an address on the local network (private IPv4, IPv6
 	// ULA/link-local, or loopback)? Used by LOCAL_NETWORK_ONLY phone builds.
 	bool isLocalNetwork() const;
+	// Is this the limited IPv4 broadcast address (255.255.255.255)?
+	bool isBroadcast() const;
 
 	// `name`: hostname or numeric IP
 	// `fallback`: fallback IP to try gets written here

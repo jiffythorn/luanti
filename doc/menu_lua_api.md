@@ -59,6 +59,12 @@ Functions
   * returns the minimum supported network protocol version
 * `core.get_max_supp_proto()`
   * returns the maximum supported network protocol version
+* `core.find_lan_server()`
+  * Sends one Luanti handshake to the local-network broadcast address and
+    returns the first local server that answers, as
+    `{address = "192.168.1.10", port = 30000}`, or `nil`.
+  * Blocks for up to two seconds. It only searches the local network and
+    never contacts a public server.
 * `core.open_url(url)`
   * opens the URL in a web browser, returns false on failure.
   * `url` must begin with http:// or https://

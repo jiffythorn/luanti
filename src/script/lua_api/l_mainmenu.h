@@ -135,6 +135,8 @@ private:
 
 	static int l_get_max_supp_proto(lua_State *L);
 
+	static int l_find_lan_server(lua_State *L);
+
 	static int l_get_formspec_version(lua_State  *L);
 
 	static int l_is_debug_build(lua_State  *L);
