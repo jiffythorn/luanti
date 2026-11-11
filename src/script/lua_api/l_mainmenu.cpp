@@ -27,6 +27,7 @@
 #include "gui/guiOpenURL.h"
 #include "gettext.h"
 #include "log.h"
+#include "serialization.h"
 #include "util/string.h"
 #include "network/networkpacket.h"
 #include "network/socket.h"
