@@ -1,0 +1,38 @@
+name: phone-apk
+
+# Fast build of the locally installable Kid Town phone app. This is separate
+# from the upstream release workflow (android.yml), which builds the store
+# bundle and unsigned release APKs first. This job produces one signed debug
+# APK for a modern arm64 phone; it can be copied to the phone and installed
+# without the Play Store or an internet connection.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - 'src/**'
+      - 'builtin/mainmenu/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/phone-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Install gettext
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends gettext
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+          distribution: 'temurin'
+          java-version: '17'
+    - name: Build local phone APK
+      run: cd android; ./gradlew assembleDebug -PphoneAbi=arm64-v8a
+    - name: Save local phone APK
+      uses: actions/upload-artifact@v7
+      with:
+        name: KidTown-phone-debug-apks
+        path: android/app/build/outputs/apk/debug/*.apk

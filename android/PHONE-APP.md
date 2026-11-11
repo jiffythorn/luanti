@@ -23,10 +23,10 @@ Kid Town server:
 
 ## Install on a phone
 
-1. Get the `KidTown-phone-debug-apks` artifact from the **android** GitHub
-   Actions run, or build it locally (below). Inside are signed debug APKs;
-   most phones need `app-arm64-v8a-debug.apk`, while older phones need
-   `app-armeabi-v7a-debug.apk`.
+1. Get the `KidTown-phone-debug-apks` artifact from the **phone-apk** GitHub
+   Actions run, or build it locally (below). The workflow builds the
+   `app-arm64-v8a-debug.apk` that modern phones need; the full `android`
+   workflow still uploads every ABI.
 2. If the phone already has the store version of Luanti installed, uninstall
    it first: Android will not install a debug-signed APK over the store's
    release signature. (The town world is on the PC, so nothing is lost.)
@@ -50,9 +50,11 @@ install the SDK, NDK and CMake; set `ANDROID_HOME`/`ANDROID_SDK_ROOT` or add a
 
 ```bash
 cd android
-./gradlew assembleDebug
-# -> app/build/outputs/apk/debug/app-<abi>-debug.apk
+./gradlew assembleDebug -PphoneAbi=arm64-v8a
+# -> app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```
+
+Omit `-PphoneAbi=arm64-v8a` to build all four ABIs.
 
 For a smaller build you can limit ABI splits to the phone's architecture, for
 example `arm64-v8a`:
@@ -81,3 +83,4 @@ architecture rather than a single `app-debug.apk`.
 | `builtin/mainmenu/init.lua` | Hides the Content tab when no ContentDB URL is configured. |
 | `builtin/mainmenu/tab_online.lua` | Shows a simple address/port/name/password join pane instead of the public server list. |
 | `.github/workflows/android.yml` | Builds and uploads the signed `KidTown-phone-debug-apks` artifact for local installation. |
+| `.github/workflows/phone-apk.yml` | Fast debug-only build for the arm64 phone APK, separate from the store release build. |

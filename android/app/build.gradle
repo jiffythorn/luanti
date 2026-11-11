@@ -39,12 +39,18 @@ android {
 		}
 	}
 
-	// for multiple APKs
+	// for multiple APKs. A local phone build can pass
+	// -PphoneAbi=arm64-v8a to produce just the APK that phone needs.
 	splits {
 		abi {
 			enable true
 			reset()
-			include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+			def phoneAbi = project.findProperty("phoneAbi")
+			if (phoneAbi) {
+				include phoneAbi
+			} else {
+				include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+			}
 		}
 	}
 
