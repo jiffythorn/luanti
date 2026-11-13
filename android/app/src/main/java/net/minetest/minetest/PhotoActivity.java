@@ -33,6 +33,7 @@ import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -64,12 +65,6 @@ public class PhotoActivity extends Activity {
 	private static final int MAX_LOCAL_BYTES = 12 * 1024 * 1024;
 	private static final long MAX_RESPONSE_BYTES = 64 * 1024;
 
-	private final Runnable refreshSend = () -> {
-		if (sendButton != null)
-			sendButton.setEnabled(!busy && selectedFile != null
-					&& consent != null && consent.isChecked());
-	};
-
 	private EditText nameInput;
 	private CheckBox consent;
 	private ImageView preview;
@@ -82,6 +77,12 @@ public class PhotoActivity extends Activity {
 	private File cameraFile;
 	private File uploadFile;
 	private boolean busy;
+
+	private final Runnable refreshSend = () -> {
+		if (sendButton != null)
+			sendButton.setEnabled(!busy && selectedFile != null
+					&& consent != null && consent.isChecked());
+	};
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -483,9 +484,15 @@ public class PhotoActivity extends Activity {
 				int code = connection.getResponseCode();
 				String body = readResponse(code >= 400
 						? connection.getErrorStream() : connection.getInputStream());
-				if (code == 200) {
-					JSONObject json = new JSONObject(body);
-					if (json.optBoolean("ok")) {
+					if (code == 200) {
+						JSONObject json;
+						try {
+							json = new JSONObject(body);
+						} catch (JSONException error) {
+							lastError = "The town PC sent an unreadable answer.";
+							break;
+						}
+						if (json.optBoolean("ok")) {
 						String serial = json.optString("serial", "");
 						return "Photo sent. The town PC made the ID"
 								+ (serial.isEmpty() ? "." : " " + serial + ".")
