@@ -110,7 +110,9 @@ public class MainActivity extends AppCompatActivity {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
 			createNotificationChannel();
 
-		checkAppVersion();
+		// Check for a locally served APK before starting the assets/game. The
+		// check is skipped immediately when no town address has been saved.
+		PhoneUpdater.check(this, this::checkAppVersion);
 	}
 
 	private void checkAppVersion() {

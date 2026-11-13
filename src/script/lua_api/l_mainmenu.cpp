@@ -1033,12 +1033,11 @@ int ModApiMainMenu::l_find_lan_server(lua_State *L)
 {
 	try {
 		UDPSocket socket = UDPSocket::CreateEphemeral(false);
-		socket.setTimeoutMs(2000);
 
-		// Send a normal Luanti handshake to the LAN broadcast address. The
-		// town server answers even though we never log in, so the reply's
-		// source address identifies the PC without the child typing anything.
-		// The native LOCAL_NETWORK_ONLY guard allows only this broadcast.
+		// Send a normal Luanti handshake to the LAN. The town server answers
+		// even though we never log in, so the reply's source address identifies
+		// the PC without the child typing anything. The native
+		// LOCAL_NETWORK_ONLY guard allows these local broadcasts.
 		const std::string_view player_name = "KidTownFind";
 		NetworkPacket pkt(TOSERVER_INIT,
 			(u32)(1 + 2 + 2 + 2 + 2 + player_name.size()));
@@ -1056,21 +1055,43 @@ int ModApiMainMenu::l_find_lan_server(lua_State *L)
 		writeU8(&wire[7], 1);
 		std::memcpy(&wire[8], *payload, payload.getSize());
 
-		socket.Send(Address(0xFFFFFFFFu, 30000),
-			wire.data(), static_cast<int>(wire.size()), true);
-
-		u8 buffer[2048];
-		Address sender;
-		int len = socket.Receive(sender, buffer, sizeof(buffer));
-		if (len > 0 && sender.isLocalNetwork() &&
-				sender.getPort() == 30000) {
+		constexpr u16 lan_port = 30000;
+		auto receive_found = [&]() -> bool {
+			u8 buffer[2048];
+			Address sender;
+			int len = socket.Receive(sender, buffer, sizeof(buffer));
+			if (len <= 0 || !sender.isLocalNetwork() ||
+					sender.getPort() != lan_port)
+				return false;
 			lua_newtable(L);
 			lua_pushstring(L, sender.serializeString().c_str());
 			lua_setfield(L, -2, "address");
 			lua_pushinteger(L, sender.getPort());
 			lua_setfield(L, -2, "port");
+			return true;
+		};
+
+		// First try the limited broadcast. Some routers deliberately drop
+		// 255.255.255.255 even on the LAN, so give it only a short window.
+		socket.setTimeoutMs(700);
+		const Address limited(0xFFFFFFFFu, lan_port);
+		socket.Send(limited, wire.data(), static_cast<int>(wire.size()), true);
+		if (receive_found())
 			return 1;
+
+		// Fallback: send the same handshake to each interface's subnet
+		// broadcast address (for example 192.168.1.255). Those addresses are
+		// private/local, so the socket guard still permits them.
+		for (const Address &destination :
+				Address::getLocalIPv4BroadcastAddresses(lan_port)) {
+			if (destination == limited)
+				continue;
+			socket.Send(destination, wire.data(),
+				static_cast<int>(wire.size()), true);
 		}
+		socket.setTimeoutMs(1300);
+		if (receive_found())
+			return 1;
 	} catch (const std::exception &e) {
 		warningstream << "LAN discovery failed: " << e.what() << std::endl;
 	}

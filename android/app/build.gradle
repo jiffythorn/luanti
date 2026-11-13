@@ -15,6 +15,20 @@ android {
 		buildConfig true
 	}
 
+	// Debug APKs are the installable phone builds. Keep one stable key in the
+	// source tree so a later build can replace an installed copy instead of
+	// requiring an uninstall. This is a debug-only key; never use it for a
+	// store/release build.
+	signingConfigs {
+		debug {
+			storeFile file("../kidtown-debug.p12")
+			storePassword "android"
+			keyAlias "androiddebugkey"
+			keyPassword "android"
+			storeType "PKCS12"
+		}
+	}
+
 	// load properties
 	Properties props = new Properties()
 	def propfile = file('../local.properties')
@@ -36,6 +50,12 @@ android {
 				minifyEnabled true
 				signingConfig signingConfigs.release
 			}
+		}
+	}
+
+	buildTypes {
+		debug {
+			signingConfig signingConfigs.debug
 		}
 	}
 

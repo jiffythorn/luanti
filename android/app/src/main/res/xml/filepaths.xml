@@ -1,3 +1,8 @@
 <paths>
 	<external-files-path path="Minetest/" name="minetest" />
+	<!-- Downloaded update APKs live here until Android's installer reads them. -->
+	<cache-path path="updates/" name="kidtown_updates" />
+	<!-- The camera writes one temporary photo here; PhotoActivity deletes it
+	     after the town PC answers. -->
+	<cache-path path="photo-upload/" name="kidtown_photo_upload" />
 </paths>

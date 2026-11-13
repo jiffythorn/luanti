@@ -76,8 +76,9 @@ jobs:
         name: Luanti-x86_64.apk
         path: android/app/build/outputs/apk/release/app-x86_64-release-unsigned.apk
     # The release APKs above are unsigned and cannot be sideloaded. This
-    # debug build is signed with the standard Android debug key, so it can be
-    # copied to a phone and installed directly (no Play Store, no internet).
+    # debug build is signed with the stable KidTown debug key in the source
+    # tree, so it can be copied to a phone, installed directly, and updated
+    # later without uninstalling (no Play Store, no internet).
     - name: Build installable local APK
       run: cd android; ./gradlew assembleDebug
     - name: Save installable local APKs

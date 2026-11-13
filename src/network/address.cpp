@@ -18,6 +18,7 @@
 typedef SOCKET socket_t;
 typedef int socklen_t;
 #else
+#include <algorithm>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -25,6 +26,14 @@ typedef int socklen_t;
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#ifdef __ANDROID__
+// bionic only declares getifaddrs() from API 24, and the phone app supports
+// older Android, so interface lookup goes through the kernel instead.
+#include <sys/ioctl.h>
+#include <linux/sockios.h>
+#endif
 #define LAST_SOCKET_ERR() (errno)
 typedef int socket_t;
 #endif
@@ -134,6 +143,10 @@ void Address::Resolve(const char *name, Address *fallback)
 		Address candidate;
 		copy_from_ai(ai, &candidate);
 		if (candidate.isLocalNetwork()) {
+			// Resolve() must preserve the port supplied to this Address
+			// (the server port), not replace it with the candidate's
+			// default port 0.
+			candidate.setPort(m_port);
 			*this = candidate;
 			found_local = true;
 			break;
@@ -265,6 +278,100 @@ bool Address::isBroadcast() const
 {
 	return m_addr_family == AF_INET &&
 		m_address.ipv4.s_addr == INADDR_BROADCAST;
+}
+
+#ifndef _WIN32
+// Append one interface's subnet broadcast, skipping loopback and degenerate
+// addresses that cannot reach the town PC.
+static void add_subnet_broadcast(std::vector<Address> &result, u32 broadcast,
+		u16 port)
+{
+	if (broadcast == 0 || broadcast == 0xFFFFFFFFu)
+		return;
+
+	Address candidate(
+		static_cast<u8>((broadcast >> 24) & 0xFF),
+		static_cast<u8>((broadcast >> 16) & 0xFF),
+		static_cast<u8>((broadcast >> 8) & 0xFF),
+		static_cast<u8>(broadcast & 0xFF), port);
+	if (!candidate.isLocalNetwork())
+		return;
+	if (std::find(result.begin(), result.end(), candidate) == result.end())
+		result.push_back(candidate);
+}
+#endif
+
+std::vector<Address> Address::getLocalIPv4BroadcastAddresses(u16 port)
+{
+	std::vector<Address> result;
+#ifdef _WIN32
+	// The phone client is the target for this fallback. Windows LAN clients
+	// keep using the limited broadcast above.
+	(void)port;
+#elif defined(__ANDROID__)
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return result;
+
+	char buf[4096];
+	struct ifconf ifc;
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if (ioctl(fd, SIOCGIFCONF, &ifc) == 0) {
+		for (char *p = buf; p + sizeof(struct ifreq) <= buf + ifc.ifc_len;
+				p += sizeof(struct ifreq)) {
+			const auto *entry = reinterpret_cast<const struct ifreq *>(p);
+
+			struct ifreq ifr;
+			memset(&ifr, 0, sizeof(ifr));
+			memcpy(ifr.ifr_name, entry->ifr_name, IFNAMSIZ - 1);
+
+			if (ioctl(fd, SIOCGIFFLAGS, &ifr) != 0)
+				continue;
+			if (!(ifr.ifr_flags & IFF_UP) ||
+					(ifr.ifr_flags & IFF_LOOPBACK) ||
+					!(ifr.ifr_flags & IFF_BROADCAST))
+				continue;
+
+			if (ioctl(fd, SIOCGIFBRDADDR, &ifr) != 0)
+				continue;
+			const auto *broadcast = reinterpret_cast<const sockaddr_in *>(
+				&ifr.ifr_broadaddr);
+			if (broadcast->sin_family != AF_INET)
+				continue;
+
+			add_subnet_broadcast(result,
+				ntohl(broadcast->sin_addr.s_addr), port);
+		}
+	}
+	close(fd);
+#else
+	struct ifaddrs *interfaces = nullptr;
+	if (getifaddrs(&interfaces) != 0)
+		return result;
+
+	for (struct ifaddrs *ifa = interfaces; ifa; ifa = ifa->ifa_next) {
+		if (!(ifa->ifa_flags & IFF_UP) ||
+				(ifa->ifa_flags & IFF_LOOPBACK))
+			continue;
+		if (!ifa->ifa_addr || !ifa->ifa_netmask ||
+				ifa->ifa_addr->sa_family != AF_INET)
+			continue;
+
+		const auto *addr = reinterpret_cast<const sockaddr_in *>(
+			ifa->ifa_addr);
+		const auto *mask = reinterpret_cast<const sockaddr_in *>(
+			ifa->ifa_netmask);
+		u32 ip = ntohl(addr->sin_addr.s_addr);
+		u32 netmask = ntohl(mask->sin_addr.s_addr);
+		if (netmask == 0 || netmask == 0xFFFFFFFFu)
+			continue;
+
+		add_subnet_broadcast(result, ip | ~netmask, port);
+	}
+	freeifaddrs(interfaces);
+#endif
+	return result;
 }
 
 bool Address::isLocalhost() const

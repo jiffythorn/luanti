@@ -15,6 +15,7 @@
 
 #include <ostream>
 #include <cstring>
+#include <vector>
 #include "irrlichttypes.h"
 
 struct IPv6AddressBytes
@@ -53,6 +54,12 @@ public:
 	bool isLocalNetwork() const;
 	// Is this the limited IPv4 broadcast address (255.255.255.255)?
 	bool isBroadcast() const;
+
+	// Subnet-directed broadcast addresses for the active, non-loopback IPv4
+	// interfaces. Used by the phone client's LAN discovery fallback when a
+	// router drops the limited broadcast. Returns only local-network
+	// addresses, so the LOCAL_NETWORK_ONLY send guard still applies.
+	static std::vector<Address> getLocalIPv4BroadcastAddresses(u16 port);
 
 	// `name`: hostname or numeric IP
 	// `fallback`: fallback IP to try gets written here

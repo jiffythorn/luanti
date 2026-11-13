@@ -29,6 +29,8 @@ jobs:
       with:
           distribution: 'temurin'
           java-version: '17'
+    - name: Check stable debug signing key
+      run: test -f android/kidtown-debug.p12
     - name: Build local phone APK
       run: cd android; ./gradlew assembleDebug -PphoneAbi=arm64-v8a
     - name: Save local phone APK

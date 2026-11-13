@@ -1085,13 +1085,15 @@ bool Game::connectToServer(const GameStartData &start_data,
 				}
 				did_fallback = true;
 			} else if (wait_time > GAME_CONNECTION_TIMEOUT) {
-				*error_message = gettext("Connection timed out.");
+				*error_message = fmtgettext("Connection timed out. Target: %s:%d",
+						address_name.c_str(), (int)start_data.socket_port);
 				errorstream << *error_message << std::endl;
 				break;
 			}
 
 			// Update status
-			showOverlayMessage(N_("Connecting to server..."), dtime, 20);
+			showOverlayMessage(fmtgettext("Connecting to %s:%d",
+					address_name.c_str(), (int)start_data.socket_port).c_str(), dtime, 20);
 		}
 		framemarker.end();
 	} catch (con::PeerNotFoundException &e) {

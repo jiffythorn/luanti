@@ -1479,13 +1479,20 @@ void GUIFormSpecMenu::parseFieldCloseOnEnter(parserData *data, const std::string
 void GUIFormSpecMenu::parsePwdField(parserData *data, const std::string &element)
 {
 	std::vector<std::string> parts;
-	if (!precheckElement(data->type, element, 4, 4, parts))
+	// Accept an optional fifth part for a prefilled password.  The stock
+	// parser only allowed name;label, which made a default value silently
+	// consume the rest of the phone login form.
+	if (!precheckElement(data->type, element, 4, 5, parts))
 		return;
 
 	std::vector<std::string> v_pos = split(parts[0],',');
 	std::vector<std::string> v_geom = split(parts[1],',');
 	std::string name = parts[2];
 	std::string label = parts[3];
+	std::string default_val = parts.size() >= 5 ? parts[4] : "";
+
+	if (m_form_src)
+		default_val = m_form_src->resolveText(default_val);
 
 	MY_CHECKPOS(data->type, 0);
 	MY_CHECKGEOM(data->type, 1);
@@ -1510,18 +1517,19 @@ void GUIFormSpecMenu::parsePwdField(parserData *data, const std::string &element
 	core::rect<s32> rect = core::rect<s32>(pos.X, pos.Y, pos.X+geom.X, pos.Y+geom.Y);
 
 	std::wstring wlabel = translate_string(utf8_to_wide(unescape_string(label)));
+	std::wstring wdefault = utf8_to_wide(unescape_string(default_val));
 
 	FieldSpec spec(
 		name,
 		wlabel,
-		L"",
+		wdefault,
 		ID_BASE + m_fields.size(),
 		0,
 		ECI_IBEAM
 	);
 
 	spec.send = true;
-	gui::IGUIEditBox *e = Environment->addEditBox(0, rect, true,
+	gui::IGUIEditBox *e = Environment->addEditBox(spec.fdefault.c_str(), rect, true,
 			data->current_parent, spec.fid);
 
 	auto style = getDefaultStyleForElement(data->type, name, "field");
